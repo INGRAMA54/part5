@@ -1,0 +1,178 @@
+
+import java.util.*;
+
+public class IntermediateCodeGenerator {
+
+    private int tempCount = 0;
+    private int labelCount = 0;
+    private List<String> code = new ArrayList<>();
+
+    public List<String> generateCode(ASTNode node) {
+        switch (node.getType()) {
+            case "program":
+                for (ASTNode child : node.getChildren()) {
+                    generateCode(child);
+                }
+                break;
+            case "declaration":
+                String varName = node.getChildren().get(1).getToken().getValue();
+                String varType = node.getChildren().get(0).getToken().getValue();
+                code.add(varName + " = " + getDefaultValue(varType));
+                break;
+            case "assignment":
+                String var = node.getChildren().get(0).getToken().getValue();
+                String expr = generateExpressionCode(node.getChildren().get(1));
+                code.add(var + " = " + expr);
+                break;
+            case "if":
+                String ifLabel = "label" + labelCount++;
+                String endIfLabel = "label" + labelCount++;
+                String condition = generateExpressionCode(node.getChildren().get(0));
+                code.add("if " + condition + " goto " + ifLabel);
+                generateCode(node.getChildren().get(2)); // else block
+                code.add("goto " + endIfLabel);
+                code.add(ifLabel + ":");
+                generateCode(node.getChildren().get(1)); // if block
+                code.add(endIfLabel + ":");
+                break;
+            case "while":
+                String whileLabel = "label" + labelCount++;
+                String endWhileLabel = "label" + labelCount++;
+                code.add(whileLabel + ":");
+                String whileCondition = generateExpressionCode(node.getChildren().get(0));
+                code.add("if " + whileCondition + " goto " + endWhileLabel);
+                generateCode(node.getChildren().get(1)); // while block
+                code.add("goto " + whileLabel);
+                code.add(endWhileLabel + ":");
+                break;
+            case "for":
+                String forLabel = "label" + labelCount++;
+                String endForLabel = "label" + labelCount++;
+                generateCode(node.getChildren().get(0)); // initialization
+                code.add(forLabel + ":");
+                String forCondition = generateExpressionCode(node.getChildren().get(1));
+                code.add("if " + forCondition + " goto " + endForLabel);
+                generateCode(node.getChildren().get(3)); // for block
+                generateCode(node.getChildren().get(2)); // increment
+                code.add("goto " + forLabel);
+                code.add(endForLabel + ":");
+                break;
+            case "function":
+                code.add(node.getToken().getValue() + ":");
+                for (ASTNode child : node.getChildren()) {
+                    if (child.getType().equals("parameterList")) {
+                        for (ASTNode param : child.getChildren()) {
+                            code.add("param " + param.getChildren().get(1).getToken().getValue());
+                        }
+                    } else {
+                        generateCode(child);
+                    }
+                }
+                code.add("return");
+                break;
+        }
+        return code;
+    }
+
+    private String generateExpressionCode(ASTNode node) {
+        switch (node.getType()) {
+            case "number":
+            case "string":
+                return node.getToken().getValue();
+            case "id":
+                return node.getToken().getValue();
+            case "binaryOp":
+                String left = generateExpressionCode(node.getChildren().get(0));
+                String right = generateExpressionCode(node.getChildren().get(1));
+                String operator = node.getToken().getValue();
+                String temp = "t" + tempCount
+public class IntermediateCodeGenerator {
+    private List<String> code;
+
+    public IntermediateCodeGenerator() {
+        code = new ArrayList<>();
+    }
+
+    public List<String> generate(ASTNode node) {
+        traverse(node);
+        return code;
+    }
+
+    private void traverse(ASTNode node) {
+        switch (node.getType()) {
+            case "Program":
+                for (ASTNode child : node.getChildren()) {
+                    traverse(child);
+                }
+                break;
+            case "Function":
+                code.add(node.getAttribute("name") + ":");
+                for (ASTNode child : node.getChildren()) {
+                    traverse(child);
+                }
+                code.add("return");
+                break;
+            case "Call":
+                String functionName = node.getAttribute("name");
+                int numArgs = node.getChildren().size();
+                for (ASTNode arg : node.getChildren()) {
+                    String argValue = arg.getAttribute("value");
+                    code.add("param " + argValue);
+                }
+                code.add("call " + functionName + ", " + numArgs);
+                break;
+            case "Assignment":
+                String varName = node.getAttribute("name");
+                ASTNode expressionNode = node.getChildren().get(0);
+                String expressionValue = expressionNode.getAttribute("value");
+                code.add("move " + expressionValue + ", " + varName);
+                break;
+            case "IfStatement":
+                ASTNode conditionNode = node.getChildren().get(0);
+                ASTNode thenNode = node.getChildren().get(1);
+                ASTNode elseNode = node.getChildren().size() > 2 ? node.getChildren().get(2) : null;
+                String elseLabel = "else_" + UUID.randomUUID().toString().replace("-", "");
+                String endLabel = "end_" + UUID.randomUUID().toString().replace("-", "");
+                traverse(conditionNode);
+                code.add("ifFalse " + elseLabel);
+                traverse(thenNode);
+                code.add("goto " + endLabel);
+                if (elseNode != null) {
+                    code.add(elseLabel + ":");
+                    traverse(elseNode);
+                }
+                code.add(endLabel + ":");
+                break;
+            case "WhileLoop":
+                ASTNode whileConditionNode = node.getChildren().get(0);
+                ASTNode whileBodyNode = node.getChildren().get(1);
+                String whileStartLabel = "while_start_" + UUID.randomUUID().toString().replace("-", "");
+                String whileEndLabel = "while_end_" + UUID.randomUUID().toString().replace("-", "");
+                code.add(whileStartLabel + ":");
+                traverse(whileConditionNode);
+                code.add("ifFalse " + whileEndLabel);
+                traverse(whileBodyNode);
+                code.add("goto " + whileStartLabel);
+                code.add(whileEndLabel + ":");
+                break;
+            case "BinaryExpression":
+                ASTNode leftOperandNode = node.getChildren().get(0);
+                ASTNode rightOperandNode = node.getChildren().get(1);
+                String operator = node.getAttribute("operator");
+                String leftOperandValue = leftOperandNode.getAttribute("value");
+                String rightOperandValue = rightOperandNode.getAttribute("value");
+                String resultVariable = "temp_" + UUID.randomUUID().toString().replace("-", "");
+                code.add("op " + leftOperandValue + " " + operator + " " + rightOperandValue + " " + resultVariable);
+                node.setAttribute("value", resultVariable);
+                break;
+            case "Literal":
+                // do nothing
+                break;
+            case "Identifier":
+                // do nothing
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown AST node type: " + node.getType());
+        }
+    }
+}
